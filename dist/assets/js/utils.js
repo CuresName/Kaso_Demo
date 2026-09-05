@@ -44,7 +44,7 @@ export function pageTitle(title, detail, label, { demo = false } = {}) {
         <h1>${escapeHtml(title)}</h1>
         <p>${escapeHtml(detail)}</p>
       </div>
-      ${demo ? '<span class="demo-pill">尚未接後端</span>' : ""}
+      ${demo ? '<span class="demo-pill" hidden>尚未接後端</span>' : ""}
     </div>
   `;
 }

@@ -56,9 +56,13 @@ function offerChips(offers) {
   `;
 }
 
-function navLink(lat, lng, label = "開啟導航") {
+// 用「店名（+地址）」開 Google Maps，而不是座標。
+// 有 Google Place ID 時帶 query_place_id，直接定位到那間店。
+function navLink(query, { label = "開啟導航", placeId = null } = {}) {
+  const params = new URLSearchParams({ api: "1", query: String(query || "").trim() });
+  if (placeId) params.set("query_place_id", placeId);
   return `
-    <a class="directions" href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noreferrer">
+    <a class="directions" href="https://www.google.com/maps/search/?${params.toString()}" target="_blank" rel="noreferrer">
       ${icon("pin")} ${label}
     </a>
   `;
@@ -75,7 +79,10 @@ function storeCard(store) {
         ${store.address ? `<p>${escapeHtml(store.address)}</p>` : ""}
         ${offerChips(store.offers)}
       </div>
-      <div class="merchant-result">${navLink(store.lat, store.lng)}</div>
+      <div class="merchant-result">${navLink(
+        `${store.name} ${store.address || ""}`,
+        { placeId: store.source === "places" ? store.id : null },
+      )}</div>
     </article>
   `;
 }
@@ -94,7 +101,7 @@ function activityCard(act) {
       </div>
       <div class="merchant-result">
         ${act.url ? `<a class="directions" href="${escapeAttr(act.url)}" target="_blank" rel="noreferrer">${icon("arrow")} 活動頁</a>` : ""}
-        ${navLink(act.lat, act.lng)}
+        ${navLink(`${act.venue || act.name} ${act.address || ""}`)}
       </div>
     </article>
   `;
@@ -108,7 +115,7 @@ function cultureCard(store) {
         <span class="platform">文化幣 · ${escapeHtml(store.area || "")} · ${store.distance} 公尺</span>
         <h3>${escapeHtml(store.name)}</h3>
       </div>
-      <div class="merchant-result">${navLink(store.lat, store.lng)}</div>
+      <div class="merchant-result">${navLink(`${store.name} ${store.area || "台北"}`)}</div>
     </article>
   `;
 }
@@ -169,7 +176,7 @@ function body() {
       <div id="nearbyMapCanvas" class="nearby-map-canvas"></div>
     </section>
 
-    <div class="merchant-list">
+    <div class="merchant-list-shop">
       ${stores.length ? stores.map(storeCard).join("") : '<div class="feature-card"><p>目前篩選條件下沒有店家。</p></div>'}
     </div>
 
@@ -250,24 +257,35 @@ async function initMap() {
   const bounds = new maps.LatLngBounds();
   bounds.extend(center);
 
-  const addMarker = (item, label, subtitle, color) => {
+  const mapsUrl = (query, placeId) => {
+    const params = new URLSearchParams({ api: "1", query: String(query || "").trim() });
+    if (placeId) params.set("query_place_id", placeId);
+    return `https://www.google.com/maps/search/?${params.toString()}`;
+  };
+
+  const addMarker = (item, label, subtitle, { color, query, placeId } = {}) => {
     const position = { lat: item.lat, lng: item.lng };
     const marker = new maps.Marker({
       position, map, title: item.name, label: { text: label, color: "#fff", fontSize: "10px" },
       ...(color ? { icon: { path: maps.SymbolPath.CIRCLE, scale: 11, fillColor: color, fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 } } : {}),
     });
+    const href = mapsUrl(query || item.name, placeId);
     const info = new maps.InfoWindow({
-      content: `<strong>${escapeHtml(item.name)}</strong><br>${escapeHtml(subtitle)}`,
+      content: `<strong>${escapeHtml(item.name)}</strong><br>${escapeHtml(subtitle)}`
+        + `<br><a href="${escapeAttr(href)}" target="_blank" rel="noreferrer">在 Google 地圖開啟 ›</a>`,
     });
     marker.addListener("click", () => info.open({ map, anchor: marker }));
     bounds.extend(position);
   };
 
-  stores.forEach((s, i) => addMarker(s, String(i + 1), `${s.categoryLabel || ""} · ${s.distance} 公尺`));
+  stores.forEach((s, i) => addMarker(s, String(i + 1), `${s.categoryLabel || ""} · ${s.distance} 公尺`, {
+    query: `${s.name} ${s.address || ""}`,
+    placeId: s.source === "places" ? s.id : null,
+  }));
   (state.nearby.activities || []).forEach((a) =>
-    addMarker(a, "活", `免費活動 · ${a.distance} 公尺`, "#2f5fd0"));
+    addMarker(a, "活", `免費活動 · ${a.distance} 公尺`, { color: "#2f5fd0", query: `${a.venue || a.name} ${a.address || ""}` }));
   (state.nearby.cultureStores || []).forEach((c) =>
-    addMarker(c, "幣", `文化幣 · ${c.distance} 公尺`, "#7a4dff"));
+    addMarker(c, "幣", `文化幣 · ${c.distance} 公尺`, { color: "#7a4dff", query: `${c.name} ${c.area || "台北"}` }));
 
   const pointCount = stores.length
     + (state.nearby.activities || []).length

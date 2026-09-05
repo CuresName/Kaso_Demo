@@ -7,7 +7,7 @@ import {
 } from "../utils.js";
 
 function render() {
-  const tab = ["travel", "general", "claim"].includes(state.insuranceTab)
+  const tab = ["travel", "claim"].includes(state.insuranceTab)
     ? state.insuranceTab
     : "travel";
   const policies = tab === "general"
@@ -25,7 +25,6 @@ function render() {
         )}
         <div class="tab-row">
           <button type="button" data-insurance="travel" class="${tab === "travel" ? "active" : ""}">旅遊保險</button>
-          <button type="button" data-insurance="general" class="${tab === "general" ? "active" : ""}">一般保險</button>
           <button type="button" data-insurance="claim" class="${tab === "claim" ? "active" : ""}">AI 理賠判斷</button>
         </div>
 
