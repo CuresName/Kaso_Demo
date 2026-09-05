@@ -44,6 +44,11 @@ server/
 | `GET /api/config` | 回傳前端地圖用的 Google key |
 | `GET /api/health` | 健康檢查 |
 
+`/api/offers/nearby` 回傳三塊：
+- `stores` — Google Places 附近店家（Places 掛掉 → OpenStreetMap → 假資料）
+- `activities` — 文化部「藝文活動」開放資料裡的**免費**活動，記憶體快取 6 小時，依距離 + 縣市地址雙重過濾（來源座標常有誤）
+- `cultureStores` — 文化幣可用店家，`server/providers/cultureCoin.js` 的人工清單（目前為台北市），沒有官方 API
+
 ## 需要的 key
 
 ### Claude（KASO AI）— 必須
