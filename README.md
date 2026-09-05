@@ -1,7 +1,30 @@
-# 卡搜 KASO — 模組化前端 + Express 後端
+## 問題與目標
 
-模組化 Vanilla JS 前端（Hash Router、每個功能頁一個 ES Module），後端是一支 Express，
-同時提供 `/api/*` 與靜態前端，一個 process 就能跑，適合部署到 Railway。
+**目標使用者**：月薪固定、每月存不下錢的年輕上班族與學生。
+
+**問題**：
+
+- 月底才發現錢不知道花去哪裡了
+- 想買東西，不知道哪裡買比較便宜
+- 看到優惠，也算不出自己到底省了多少
+- 想開始存錢，卻不知道該從哪裡下手
+
+這四件事看起來各自獨立，其實是同一個問題的四個面向——**使用者沒有一個「當下能用的數
+字」**。記帳 App 給的是事後總結，比價網站給的是絕對價格，優惠資訊給的是折扣百分比，三
+者都沒有回答那個真正該問的問題：**「以我現在的狀況，這筆到底花不花得起？」**
+
+決策發生在花之前——站在店裡、滑到結帳頁的那三秒。而這三秒裡，資訊分散在記帳 App、銀行
+App、比價網站，沒有人會為了買一樣東西開三個 App 交叉比對。所以絕大多數消費決策實際上
+是憑感覺做的，記帳只是在事後記錄後悔。
+
+**KASO 的解法**：先用 5 題情境問卷把使用者分成「月光族」與「目標計畫族」，兩種身分套用
+不同策略。接著由收入、固定支出與存款目標推出唯一基準「**安心可花**」，所有功能都以它為
+上限——比價結果標示買不買得起、附近優惠換算「花完還剩多少」、想買的東西超出預算時當場
+提醒，幫使用者擋掉衝動消費。記帳與規劃在同一個平台完成，數字即時回饋到那個唯一基準上。
+
+**為什麼現在才做得到**：難處不在算錢，在於使用者是用自然語言問的（「這個我買得起嗎」
+「這個月還能出去玩嗎」），而回答必須同時吃進他當下的財務狀況與消費身分。規則引擎窮舉不
+完這些組合，得靠模型當場理解與判斷。
 
 ## 快速開始
 
@@ -28,27 +51,6 @@ server/
     claude.js      Claude API，system prompt 用前端傳來的即時預算快照
 ```
 
-### 資料不再有伺服器狀態
-
-預算計算、profile、記帳全部留在前端（`dist/assets/js/services/finance.js`、
-`localStorage`）。後端是無狀態代理，只做三件事：打外部 API、組 prompt、擋濫用。
-所以 Railway 不需要資料庫或 volume；重啟不會掉資料（資料本來就在使用者瀏覽器）。
-
-## API
-
-| 端點 | 說明 |
-|---|---|
-| `GET /api/products/search?q=` | BigGo 跨平台比價 |
-| `POST /api/offers/nearby` `{lat,lng,safe?}` | 附近店家 + 配對的優惠 chip |
-| `POST /api/assistant/chat` `{message,history,context}` | KASO AI（Claude） |
-| `GET /api/config` | 回傳前端地圖用的 Google key |
-| `GET /api/health` | 健康檢查 |
-
-`/api/offers/nearby` 回傳三塊：
-- `stores` — Google Places 附近店家（Places 掛掉 → OpenStreetMap → 假資料）
-- `activities` — 文化部「藝文活動」開放資料裡的**免費**活動，記憶體快取 6 小時，依距離 + 縣市地址雙重過濾（來源座標常有誤）
-- `cultureStores` — 文化幣可用店家，`server/providers/cultureCoin.js` 的人工清單（目前為台北市），沒有官方 API
-
 ## 資料來源
 
 | 功能 | 來源 | 端點 / 資料集 | 認證 | 授權 / 出處 |
@@ -67,7 +69,7 @@ server/
 ## 需要的 key
 
 ### Claude（KASO AI）— 必須
-`ANTHROPIC_API_KEY`，到 https://console.anthropic.com/settings/keys 拿。
+`ANTHROPIC_API_KEY`。
 沒設定時 KASO AI 會回「暫時連不上」，其他功能不受影響。
 **建議在 Anthropic console 設每月消費上限**，`/api/assistant/chat` 是公開端點。
 
@@ -77,25 +79,11 @@ server/
 2. 啟用 **Maps JavaScript API**（前端地圖底圖）
 3. 開 billing（有免費額度）
 
-建議拆兩把 key（見 `.env.example`）：後端 `GOOGLE_PLACES_KEY`、前端 `GOOGLE_MAPS_BROWSER_KEY`（加 HTTP referrer 限制到你的網域）。只給一把 `GOOGLE_MAPS_API_KEY` 也能跑。
-
 ### BigGo（比價）— 不需要 key
 
-## 部署到 Railway
-
-1. `railway init` → 連這個 repo
-2. Variables 裡填 `ANTHROPIC_API_KEY`、`GOOGLE_PLACES_KEY`、`GOOGLE_MAPS_BROWSER_KEY`（或 `GOOGLE_MAPS_API_KEY`），**不要**上傳 `.env`
-3. Railway 自動偵測 `npm start`、注入 `PORT`
-4. 上線後回 GCP 把前端 key 的 referrer 限制設成你的 Railway 網域
-
 ## 濫用防護
-
 `server/rateLimit.js`：`/api/assistant/chat` 有 per-IP（預設 12 次 / 10 分）與全站每日上限
 （`ASSISTANT_DAILY_LIMIT`，預設 200），其他端點 40 次 / 分。都是記憶體版，重啟即清空。
-
-## 尚未接後端的頁面
-
-旅遊規劃 / 保險保障 / 訂閱比較維持靜態展示，頁面上有「尚未接後端」標記。海外刷卡試算已移除。
 
 ## 授權
 
