@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="卡搜 KASO 月光族目標存錢、商品比價與生活決策工具">
+  <title>卡搜 KASO｜極致省錢決策工具</title>
+  <link rel="stylesheet" href="./assets/css/styles.css">
+</head>
+<body>
+  <header id="siteHeader" class="site-header" hidden>
+    <div class="shell header-row">
+      <button class="brand" type="button" data-route="/home" aria-label="回到首頁">
+        <span class="brand-mark"><svg aria-hidden="true"><use href="#i-grid"></use></svg></span>
+        <span class="brand-copy"><strong>卡搜 <b>KASO</b></strong><small>極致省錢決策工具</small></span>
+      </button>
+
+      <nav class="main-nav" aria-label="主要功能">
+        <button class="nav-btn" type="button" data-route="/search" data-nav="search" data-mega="search">商品比價</button>
+        <button class="nav-btn" type="button" data-route="/nearby" data-nav="nearby" data-mega="nearby">附近優惠</button>
+        <button class="nav-btn" type="button" data-route="/ledger" data-nav="ledger" data-mega="life">生活規劃</button>
+      </nav>
+
+      <div class="header-actions">
+        <button id="resetProfile" class="persona-chip" type="button" title="重新進行個人設定">
+          <svg aria-hidden="true"><use href="#i-wallet"></use></svg><span>重新設定</span>
+        </button>
+        <div class="finance-mini">
+          <span id="headGoal" class="goal" hidden><small>目標</small><strong id="headGoalName">存款計畫</strong></span>
+          <span><small>保留</small><strong id="headReserve">NT$26,000</strong></span>
+          <span class="safe"><small>可花</small><strong id="headSafe">NT$4,000</strong></span>
+        </div>
+        <button id="profileOpen" class="profile-btn" type="button" title="個人資料與登入" aria-label="開啟個人資料與登入">
+          <svg aria-hidden="true"><use href="#i-user"></use></svg>
+        </button>
+      </div>
+    </div>
+    <div id="megaMenu" class="mega-menu" hidden></div>
+  </header>
+
+  <div id="app"></div>
+
+  <footer id="siteFooter" class="site-footer" hidden>
+    <div class="shell site-footer-row">
+      <strong>卡搜 KASO</strong>
+      <small>先保留重要的，再放心使用剩下的。</small>
+    </div>
+  </footer>
+
+  <script type="module" src="./assets/js/main.js"></script>
+</body>
+</html>

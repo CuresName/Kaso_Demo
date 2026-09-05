@@ -1,0 +1,20 @@
+{
+  "name": "kaso-card-scout-tw",
+  "version": "1.0.0",
+  "description": "卡搜 KASO — 模組化前端 + Express 後端（BigGo 比價 / Google Places 附近優惠 / Claude AI 助手）",
+  "private": true,
+  "main": "server/index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
