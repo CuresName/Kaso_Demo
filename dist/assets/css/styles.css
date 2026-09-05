@@ -797,7 +797,7 @@
       font-size: .76rem;
     }
     .service-children button:hover { border-bottom-width: 4px; border-bottom-color: var(--lime-deep); }
-    .qa-section { width: min(900px, 100%); margin: 78px auto 0; padding: 38px 0 8px; border-top: 1.5px solid var(--ink); border-radius: 0; background: transparent; }
+    .qa-section { width: min(100%); margin: 78px auto 0; padding: 38px 10px 8px; border-top: 1.5px solid var(--ink); border-radius: 0; background: transparent; }
     .qa-title h2 { font-size: clamp(2.4rem, 6vw, 4.8rem); }
     .qa-list details { border-color: var(--ink); }
     .qa-list summary::after { border: 1px solid var(--ink); border-radius: 2px; background: var(--panel); color: var(--ink); }
@@ -1311,6 +1311,34 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
+    }
+
+    /* 附近優惠：真的 Google Map 容器（蓋掉假地圖的格線與假定位點） */
+    #nearbyMapCanvas {
+      background: #e8eef1;
+      background-image: none;
+      min-height: 320px;
+    }
+    #nearbyMapCanvas::after { content: none; display: none; }
+    #nearbyMapCanvas.map-fallback {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      text-align: center;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    .nearby-toolbar { margin: 14px 0 4px; }
+    .nearby-toolbar .filter-toggle {
+      width: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: .82rem;
+      line-height: 1.2;
     }
 
     @media (max-width: 720px) {

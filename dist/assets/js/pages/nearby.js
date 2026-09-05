@@ -1,5 +1,6 @@
 import { fetchNearbyOffers } from "../services/api.js";
 import { getFinance } from "../services/finance.js";
+import { loadGoogleMaps } from "../services/maps.js";
 import { state } from "../store.js";
 import {
   $,
@@ -23,38 +24,23 @@ const CATEGORY_ICON = {
   entertainment: "grid",
 };
 
-function mapMarkup(stores) {
-  if (!stores.length) return "";
-  const lats = stores.map((s) => s.lat);
-  const lngs = stores.map((s) => s.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const latSpan = Math.max(0.001, maxLat - minLat);
-  const lngSpan = Math.max(0.001, maxLng - minLng);
+// Google Places 的價位 enum → 顯示符號 + 是否算「平價」
+const PRICE_LEVEL = {
+  PRICE_LEVEL_FREE: { label: "免費", cheap: true },
+  PRICE_LEVEL_INEXPENSIVE: { label: "$", cheap: true },
+  PRICE_LEVEL_MODERATE: { label: "$$", cheap: true },
+  PRICE_LEVEL_EXPENSIVE: { label: "$$$", cheap: false },
+  PRICE_LEVEL_VERY_EXPENSIVE: { label: "$$$$", cheap: false },
+};
 
-  return `
-    <section class="nearby-map" aria-label="附近推薦地圖">
-      <div class="nearby-map-head"><h2>附近推薦地圖</h2><small>點標記開啟導航</small></div>
-      <div class="nearby-map-canvas">
-        ${stores.map((store, index) => {
-          const left = 12 + ((store.lng - minLng) / lngSpan) * 76;
-          const top = 14 + ((maxLat - store.lat) / latSpan) * 70;
-          return `
-            <a
-              class="map-marker"
-              style="left:${left}%;top:${top}%"
-              href="https://www.google.com/maps/search/?api=1&query=${store.lat},${store.lng}"
-              target="_blank"
-              rel="noreferrer"
-              title="${escapeAttr(store.name)}"
-            ><span>${index + 1}</span></a>
-          `;
-        }).join("")}
-      </div>
-    </section>
-  `;
+function visibleStores() {
+  const stores = state.nearby.stores || [];
+  if (!state.nearby.budgetOnly) return stores;
+  // 「安心預算內」= Google 標示為平價（$–$$）或沒有標價位的店家
+  return stores.filter((s) => {
+    const p = PRICE_LEVEL[s.priceLevel];
+    return !p || p.cheap;
+  });
 }
 
 function offerChips(offers) {
@@ -71,11 +57,12 @@ function offerChips(offers) {
 }
 
 function storeCard(store) {
+  const price = PRICE_LEVEL[store.priceLevel];
   return `
     <article class="merchant-card">
       <span class="merchant-icon">${icon(CATEGORY_ICON[store.category] || "pin")}</span>
       <div>
-        <span class="platform">${escapeHtml(store.categoryLabel || "")} · ${store.distance} 公尺</span>
+        <span class="platform">${escapeHtml(store.categoryLabel || "")} · ${store.distance} 公尺${price ? ` · ${price.label}` : ""}</span>
         <h3>${escapeHtml(store.name)}</h3>
         ${store.address ? `<p>${escapeHtml(store.address)}</p>` : ""}
         ${offerChips(store.offers)}
@@ -90,7 +77,7 @@ function storeCard(store) {
 }
 
 function body() {
-  const { status, stores, error, source } = state.nearby;
+  const { status, error, source, budgetOnly } = state.nearby;
   const finance = getFinance();
 
   if (status === "loading") {
@@ -112,13 +99,12 @@ function body() {
       </div>
     `;
   }
-  if (status === "done" && !stores.length) {
-    return `<div class="feature-card"><p>這個位置 1,000 公尺內沒有找到符合的店家。</p></div>`;
-  }
   if (status !== "done") {
     return `<div class="feature-card"><p>準備讀取你的位置…</p></div>`;
   }
 
+  const stores = visibleStores();
+  const total = state.nearby.stores.length;
   const sourceLabel = source === "places"
     ? "Google Places"
     : source === "overpass"
@@ -128,15 +114,26 @@ function body() {
   return `
     <div class="summary-strip">
       <div><small>搜尋半徑</small><strong>1,000 公尺</strong></div>
-      <div><small>找到店家</small><strong>${stores.length} 間</strong></div>
+      <div><small>${budgetOnly ? "預算內店家" : "找到店家"}</small><strong>${stores.length}${budgetOnly ? ` / ${total}` : ""} 間</strong></div>
       <div><small>先保留不動</small><strong>${money(finance.reserve)}</strong></div>
       <div><small>安心可花</small><strong>${money(finance.safe)}</strong></div>
     </div>
-    ${mapMarkup(stores)}
-    <div class="merchant-list">
-      ${stores.map(storeCard).join("")}
+
+    <div class="nearby-toolbar">
+      <button type="button" class="filter-toggle${budgetOnly ? " active" : ""}" data-nearby-budget aria-pressed="${budgetOnly}">
+        ${icon("filter")} 只看安心預算內店家（$–$$）
+      </button>
     </div>
-    <p class="onboarding-note">店家來源：${sourceLabel}。優惠為政府活動 / 文化幣示範資料，依店家分類配對。</p>
+
+    <section class="nearby-map" aria-label="附近推薦地圖">
+      <div class="nearby-map-head"><h2>附近推薦地圖</h2><small>點標記看店名與距離</small></div>
+      <div id="nearbyMapCanvas" class="nearby-map-canvas"></div>
+    </section>
+
+    <div class="merchant-list">
+      ${stores.length ? stores.map(storeCard).join("") : '<div class="feature-card"><p>目前篩選條件下沒有店家。</p></div>'}
+    </div>
+    <p class="onboarding-note">店家來源：${sourceLabel}。價位($)為 Google 標示；優惠為政府活動 / 文化幣示範資料，依店家分類配對。</p>
   `;
 }
 
@@ -156,21 +153,63 @@ function render() {
   `;
 }
 
+async function initMap() {
+  const canvas = $("#nearbyMapCanvas");
+  if (!canvas) return;
+  const stores = visibleStores();
+  const center = state.nearby.coords || DEMO_COORDS;
+
+  let maps;
+  try {
+    maps = await loadGoogleMaps();
+  } catch {
+    canvas.classList.add("map-fallback");
+    canvas.innerHTML = `<p>地圖需要 Google Maps API key，且該 key 要允許「Maps JavaScript API」並把 HTTP referrer 限制設到本網域。</p>`;
+    return;
+  }
+  if (!canvas.isConnected) return; // 使用者已切走
+
+  const map = new maps.Map(canvas, {
+    center,
+    zoom: 15,
+    disableDefaultUI: true,
+    zoomControl: true,
+    clickableIcons: false,
+  });
+
+  new maps.Marker({
+    position: center,
+    map,
+    title: "目前位置",
+    label: { text: "你", color: "#fff", fontSize: "11px" },
+  });
+
+  const bounds = new maps.LatLngBounds();
+  bounds.extend(center);
+  stores.forEach((store, index) => {
+    const position = { lat: store.lat, lng: store.lng };
+    const marker = new maps.Marker({ position, map, title: store.name, label: String(index + 1) });
+    const info = new maps.InfoWindow({
+      content: `<strong>${escapeHtml(store.name)}</strong><br>${escapeHtml(store.categoryLabel || "")} · ${store.distance} 公尺`,
+    });
+    marker.addListener("click", () => info.open({ map, anchor: marker }));
+    bounds.extend(position);
+  });
+  if (stores.length) map.fitBounds(bounds, 40);
+}
+
 async function loadNearby(coords, { rerender }) {
   state.nearby = { ...state.nearby, status: "loading", coords, error: null };
   rerender({ scroll: false });
   try {
     const finance = getFinance();
-    const data = await fetchNearbyOffers({
-      lat: coords.lat,
-      lng: coords.lng,
-      safe: finance.safe,
-    });
+    const data = await fetchNearbyOffers({ lat: coords.lat, lng: coords.lng, safe: finance.safe });
     state.nearby = {
       status: "done",
       coords,
       source: data.source,
       stores: data.stores || [],
+      budgetOnly: state.nearby.budgetOnly || false,
       error: null,
     };
   } catch (err) {
@@ -188,12 +227,10 @@ function requestLocation({ rerender }) {
   state.nearby = { ...state.nearby, status: "loading" };
   rerender({ scroll: false });
   navigator.geolocation.getCurrentPosition(
-    (position) => {
-      loadNearby(
-        { lat: position.coords.latitude, lng: position.coords.longitude },
-        { rerender },
-      );
-    },
+    (position) => loadNearby(
+      { lat: position.coords.latitude, lng: position.coords.longitude },
+      { rerender },
+    ),
     () => {
       state.nearby = { ...state.nearby, status: "denied" };
       rerender({ scroll: false });
@@ -208,6 +245,8 @@ function mount({ rerender }) {
 
   if (state.nearby.status === "idle") {
     requestLocation({ rerender });
+  } else if (state.nearby.status === "done") {
+    initMap();
   }
 
   $$("[data-nearby-demo]").forEach((button) => {
@@ -215,8 +254,13 @@ function mount({ rerender }) {
   });
   $$("[data-nearby-retry]").forEach((button) => {
     button.addEventListener("click", () => {
-      const coords = state.nearby.coords || DEMO_COORDS;
-      loadNearby(coords, { rerender });
+      loadNearby(state.nearby.coords || DEMO_COORDS, { rerender });
+    }, options);
+  });
+  $$("[data-nearby-budget]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.nearby = { ...state.nearby, budgetOnly: !state.nearby.budgetOnly };
+      rerender({ scroll: false });
     }, options);
   });
 

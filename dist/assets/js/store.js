@@ -21,7 +21,7 @@ export const state = {
   search: { status: "idle", query: "", result: null, error: null },
   transactions: [],
   // 附近優惠結果快取
-  nearby: { status: "idle", coords: null, source: null, stores: [], error: null },
+  nearby: { status: "idle", coords: null, source: null, stores: [], error: null, budgetOnly: false },
   recovery: null,
   recoveryPrompt: false,
   insuranceTab: "travel",
