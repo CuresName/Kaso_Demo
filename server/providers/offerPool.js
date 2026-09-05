@@ -46,10 +46,26 @@ function fetchOffers() {
   return OFFER_POOL;
 }
 
+// Google Places (New) 會回很細的型別（taiwanese_restaurant / hot_pot_restaurant /
+// chinese_noodle_restaurant …），查不到精確對應時再用關鍵字兜底。
+function keywordCategory(type = "") {
+  if (/restaurant|cafe|coffee|bakery|food|bar|meal|breakfast|dessert|ice_cream|tea_house/.test(type)) return "food";
+  if (/clothing|shoe|apparel|boutique|jewelry/.test(type)) return "clothing";
+  if (/book|library|school|university|student/.test(type)) return "education";
+  if (/movie|cinema|gym|fitness|park|tourist|amusement|bowling|karaoke|night_club/.test(type)) return "entertainment";
+  if (/gas_station|bicycle|car_repair|transit|parking|train_station|subway/.test(type)) return "transport";
+  if (/store|supermarket|market|grocery|convenience|pharmacy|drugstore|shopping/.test(type)) return "housing";
+  return null;
+}
+
 function categoryFromPlaceTypes(types = [], primaryType = null) {
-  if (primaryType && PLACE_TYPE_TO_CATEGORY[primaryType]) return PLACE_TYPE_TO_CATEGORY[primaryType];
-  for (const t of types) {
+  const all = [primaryType, ...types].filter(Boolean);
+  for (const t of all) {
     if (PLACE_TYPE_TO_CATEGORY[t]) return PLACE_TYPE_TO_CATEGORY[t];
+  }
+  for (const t of all) {
+    const hit = keywordCategory(t);
+    if (hit) return hit;
   }
   return "housing";
 }
