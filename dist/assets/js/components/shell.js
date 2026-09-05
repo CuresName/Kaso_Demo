@@ -44,26 +44,6 @@ const ICON_SPRITE = `
 function globalUiMarkup() {
   return `
     <div id="globalUi">
-      <button id="serviceLauncher" class="service-launcher" type="button" aria-haspopup="dialog" aria-controls="serviceSheet">
-        <span>所有功能</span><b aria-hidden="true">＋</b>
-      </button>
-      <dialog id="serviceSheet" class="service-sheet" aria-labelledby="serviceSheetTitle">
-        <div class="service-sheet-head">
-          <div><small>KASO SERVICES</small><h2 id="serviceSheetTitle">想先做什麼？</h2></div>
-          <button id="serviceSheetClose" class="service-sheet-close" type="button" aria-label="關閉所有功能">${icon("x")}</button>
-        </div>
-        <div class="service-sheet-grid">
-          <button class="service-sheet-card" type="button" data-route="/search">
-            <span class="service-sheet-icon">${icon("search")}</span><small>同品項與價格整理</small><strong>商品比價</strong><p>確認完整型號，再整理不同平台的同品項價格。</p><b>開始比價</b>
-          </button>
-          <button class="service-sheet-card" type="button" data-route="/nearby">
-            <span class="service-sheet-icon">${icon("pin")}</span><small>位置與持有優惠</small><strong>附近優惠</strong><p>查看附近店家、文化幣與免費活動可用選項。</p><b>查看附近</b>
-          </button>
-          <button class="service-sheet-card" type="button" data-route="/ledger">
-            <span class="service-sheet-icon">${icon("grid")}</span><small>帳務、旅遊與保障</small><strong>生活規劃</strong><p>集中查看記帳、旅遊、保險與訂閱規劃。</p><b>打開生活工具</b>
-          </button>
-        </div>
-      </dialog>
       ${assistantMarkup()}
       ${dialogsMarkup()}
     </div>
@@ -99,33 +79,23 @@ function showMegaMenu(key) {
   const columns = MEGA_CONTENT[key];
   if (!menu || !columns) return;
 
-  if (key === "search") {
-    menu.innerHTML = `
-      <div class="shell search-mega-grid">
-        ${columns[0][1].map((label) => `
-          <button type="button" data-mega-action="${escapeAttr(label)}">${label}</button>
-        `).join("")}
-      </div>
-    `;
-  } else {
-    const gridClass = columns.length === 1
-      ? " single"
-      : columns.length === 2
-        ? " two"
-        : "";
-    menu.innerHTML = `
-      <div class="shell mega-grid${gridClass}">
-        ${columns.map((column, index) => `
-          <div class="mega-col${index === 0 ? " primary" : ""}">
-            <small>${column[0]}</small>
-            ${column[1].map((label) => `
-              <button type="button" data-mega-action="${escapeAttr(label)}">${label}</button>
-            `).join("")}
-          </div>
-        `).join("")}
-      </div>
-    `;
-  }
+  const gridClass = columns.length === 1
+    ? " single"
+    : columns.length === 2
+      ? " two"
+      : "";
+  menu.innerHTML = `
+    <div class="shell mega-grid${gridClass}">
+      ${columns.map((column, index) => `
+        <div class="mega-col${index === 0 ? " primary" : ""}">
+          <small>${column[0]}</small>
+          ${column[1].map((label) => `
+            <button type="button" data-mega-action="${escapeAttr(label)}">${label}</button>
+          `).join("")}
+        </div>
+      `).join("")}
+    </div>
+  `;
   menu.hidden = false;
 }
 
@@ -139,7 +109,6 @@ function routeForMegaAction(label) {
     state.searchCategory = "商品";
     return "/search";
   }
-  if (label === "附近推薦") return "/nearby";
   if (label === "日常採買") {
     state.searchCategory = "日常";
     return "/search";
@@ -211,14 +180,12 @@ export function mountShell({ navigate }) {
     navigate(routeForMegaAction(action.dataset.megaAction));
   });
 
-  $("#serviceLauncher")?.addEventListener("click", () => $("#serviceSheet").showModal());
   $("#serviceSheetClose")?.addEventListener("click", () => $("#serviceSheet").close());
 
   window.addEventListener("kaso:routechange", (event) => {
     const { label, navGroup, shellVisible } = event.detail;
     $("#siteHeader").hidden = !shellVisible;
     $("#siteFooter").hidden = !shellVisible;
-    $("#serviceLauncher").hidden = !shellVisible;
     $("#feedbackOpen").hidden = !shellVisible;
     setAssistantEnabled(shellVisible);
     setActiveNavigation(navGroup);

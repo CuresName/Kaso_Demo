@@ -4,6 +4,8 @@ const router = express.Router();
 const biggo = require("./providers/biggo");
 const places = require("./providers/places");
 const offerPool = require("./providers/offerPool");
+const culture = require("./providers/culture");
+const cultureCoin = require("./providers/cultureCoin");
 const claude = require("./providers/claude");
 const { perIp, dailyCap } = require("./rateLimit");
 
@@ -43,9 +45,16 @@ router.post("/offers/nearby", lightLimit, async (req, res) => {
     return res.status(400).json({ error: "bad-request", message: "需要 lat / lng 座標。" });
   }
 
-  const stores = (await places.fetchNearbyStores(lat, lng)).sort((a, b) => a.distance - b.distance);
+  const [storesRaw, activities, cultureStores] = await Promise.all([
+    places.fetchNearbyStores(lat, lng),
+    culture.nearbyFreeActivities(lat, lng, 3000).catch(() => []),
+    Promise.resolve(cultureCoin.nearbyCultureCoinStores(lat, lng, 1500)),
+  ]);
+
+  const stores = storesRaw.sort((a, b) => a.distance - b.distance);
   const allOffers = offerPool.fetchOffers();
   const sourceUsed = stores[0]?.source || "mock";
+  const cultureNames = new Set(cultureStores.map((s) => s.name));
 
   const storesWithOffers = stores.map((store) => {
     const matched = allOffers
@@ -57,6 +66,7 @@ router.post("/offers/nearby", lightLimit, async (req, res) => {
     return {
       ...store,
       categoryLabel: offerPool.CATEGORY_LABEL[store.category] || "日常",
+      acceptsCultureCoin: cultureNames.has(store.name),
       offers: matched,
     };
   });
@@ -66,6 +76,11 @@ router.post("/offers/nearby", lightLimit, async (req, res) => {
     radius: places.RADIUS_M,
     source: sourceUsed,
     stores: storesWithOffers,
+    activities,
+    cultureStores: cultureStores.map((s) => ({
+      ...s,
+      categoryLabel: offerPool.CATEGORY_LABEL[s.category] || "藝文",
+    })),
   });
 });
 

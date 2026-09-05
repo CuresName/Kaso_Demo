@@ -56,6 +56,14 @@ function offerChips(offers) {
   `;
 }
 
+function navLink(lat, lng, label = "開啟導航") {
+  return `
+    <a class="directions" href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noreferrer">
+      ${icon("pin")} ${label}
+    </a>
+  `;
+}
+
 function storeCard(store) {
   const price = PRICE_LEVEL[store.priceLevel];
   return `
@@ -63,15 +71,44 @@ function storeCard(store) {
       <span class="merchant-icon">${icon(CATEGORY_ICON[store.category] || "pin")}</span>
       <div>
         <span class="platform">${escapeHtml(store.categoryLabel || "")} · ${store.distance} 公尺${price ? ` · ${price.label}` : ""}</span>
-        <h3>${escapeHtml(store.name)}</h3>
+        <h3>${escapeHtml(store.name)}${store.acceptsCultureCoin ? ' <span class="offer-chip free">收文化幣</span>' : ""}</h3>
         ${store.address ? `<p>${escapeHtml(store.address)}</p>` : ""}
         ${offerChips(store.offers)}
       </div>
-      <div class="merchant-result">
-        <a class="directions" href="https://www.google.com/maps/search/?api=1&query=${store.lat},${store.lng}" target="_blank" rel="noreferrer">
-          ${icon("pin")} 開啟導航
-        </a>
+      <div class="merchant-result">${navLink(store.lat, store.lng)}</div>
+    </article>
+  `;
+}
+
+function activityCard(act) {
+  const dates = act.startDate && act.endDate
+    ? `${act.startDate}${act.endDate !== act.startDate ? ` ~ ${act.endDate}` : ""}`
+    : "";
+  return `
+    <article class="merchant-card">
+      <span class="merchant-icon">${icon("grid")}</span>
+      <div>
+        <span class="platform">免費活動 · ${act.distance} 公尺${dates ? ` · ${dates}` : ""}</span>
+        <h3>${escapeHtml(act.name)}</h3>
+        ${act.venue ? `<p>${escapeHtml(act.venue)}${act.address ? `｜${escapeHtml(act.address)}` : ""}</p>` : ""}
       </div>
+      <div class="merchant-result">
+        ${act.url ? `<a class="directions" href="${escapeAttr(act.url)}" target="_blank" rel="noreferrer">${icon("arrow")} 活動頁</a>` : ""}
+        ${navLink(act.lat, act.lng)}
+      </div>
+    </article>
+  `;
+}
+
+function cultureCard(store) {
+  return `
+    <article class="merchant-card">
+      <span class="merchant-icon">${icon("music")}</span>
+      <div>
+        <span class="platform">文化幣 · ${escapeHtml(store.area || "")} · ${store.distance} 公尺</span>
+        <h3>${escapeHtml(store.name)}</h3>
+      </div>
+      <div class="merchant-result">${navLink(store.lat, store.lng)}</div>
     </article>
   `;
 }
@@ -105,6 +142,8 @@ function body() {
 
   const stores = visibleStores();
   const total = state.nearby.stores.length;
+  const activities = state.nearby.activities || [];
+  const cultureStores = state.nearby.cultureStores || [];
   const sourceLabel = source === "places"
     ? "Google Places"
     : source === "overpass"
@@ -115,8 +154,8 @@ function body() {
     <div class="summary-strip">
       <div><small>搜尋半徑</small><strong>1,000 公尺</strong></div>
       <div><small>${budgetOnly ? "預算內店家" : "找到店家"}</small><strong>${stores.length}${budgetOnly ? ` / ${total}` : ""} 間</strong></div>
-      <div><small>先保留不動</small><strong>${money(finance.reserve)}</strong></div>
-      <div><small>安心可花</small><strong>${money(finance.safe)}</strong></div>
+      <div><small>免費活動</small><strong>${activities.length}</strong></div>
+      <div><small>文化幣店家</small><strong>${cultureStores.length}</strong></div>
     </div>
 
     <div class="nearby-toolbar">
@@ -133,7 +172,24 @@ function body() {
     <div class="merchant-list">
       ${stores.length ? stores.map(storeCard).join("") : '<div class="feature-card"><p>目前篩選條件下沒有店家。</p></div>'}
     </div>
-    <p class="onboarding-note">店家來源：${sourceLabel}。價位($)為 Google 標示；優惠為政府活動 / 文化幣示範資料，依店家分類配對。</p>
+
+    <div class="section-head" style="margin-top:22px">
+      <div><h2>附近免費藝文活動</h2><p>文化部藝文活動開放資料，只列免費、且在你所在縣市的活動。</p></div>
+      <span>${activities.length} 場</span>
+    </div>
+    <div class="merchant-list">
+      ${activities.length ? activities.map(activityCard).join("") : '<div class="feature-card"><p>3 公里內目前沒有免費藝文活動。</p></div>'}
+    </div>
+
+    <div class="section-head" style="margin-top:22px">
+      <div><h2>文化幣可用店家</h2><p>16–22 歲的文化成長券可用，人工整理的常見店家清單。</p></div>
+      <span>${cultureStores.length} 間</span>
+    </div>
+    <div class="merchant-list">
+      ${cultureStores.length ? cultureStores.map(cultureCard).join("") : '<div class="feature-card"><p>1.5 公里內沒有清單上的文化幣店家。</p></div>'}
+    </div>
+
+    <p class="onboarding-note">店家來源：${sourceLabel}；價位($)為 Google 標示。免費活動：文化部藝文活動開放資料（每日更新，座標偶有誤差）。文化幣店家：人工清單。政府活動優惠仍為示範資料。</p>
   `;
 }
 
@@ -163,9 +219,16 @@ async function initMap() {
   try {
     maps = await loadGoogleMaps();
   } catch {
-    canvas.classList.add("map-fallback");
-    canvas.innerHTML = `<p>地圖需要 Google Maps API key，且該 key 要允許「Maps JavaScript API」並把 HTTP referrer 限制設到本網域。</p>`;
-    return;
+    // 首次載入偶爾會 race，等一下再試一次
+    await new Promise((r) => setTimeout(r, 1500));
+    try {
+      maps = await loadGoogleMaps();
+    } catch {
+      if (!canvas.isConnected) return;
+      canvas.classList.add("map-fallback");
+      canvas.innerHTML = `<p>地圖載入失敗。請確認 Google key 已允許「Maps JavaScript API」，且 HTTP referrer 限制包含本網域。</p>`;
+      return;
+    }
   }
   if (!canvas.isConnected) return; // 使用者已切走
 
@@ -186,16 +249,30 @@ async function initMap() {
 
   const bounds = new maps.LatLngBounds();
   bounds.extend(center);
-  stores.forEach((store, index) => {
-    const position = { lat: store.lat, lng: store.lng };
-    const marker = new maps.Marker({ position, map, title: store.name, label: String(index + 1) });
+
+  const addMarker = (item, label, subtitle, color) => {
+    const position = { lat: item.lat, lng: item.lng };
+    const marker = new maps.Marker({
+      position, map, title: item.name, label: { text: label, color: "#fff", fontSize: "10px" },
+      ...(color ? { icon: { path: maps.SymbolPath.CIRCLE, scale: 11, fillColor: color, fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 } } : {}),
+    });
     const info = new maps.InfoWindow({
-      content: `<strong>${escapeHtml(store.name)}</strong><br>${escapeHtml(store.categoryLabel || "")} · ${store.distance} 公尺`,
+      content: `<strong>${escapeHtml(item.name)}</strong><br>${escapeHtml(subtitle)}`,
     });
     marker.addListener("click", () => info.open({ map, anchor: marker }));
     bounds.extend(position);
-  });
-  if (stores.length) map.fitBounds(bounds, 40);
+  };
+
+  stores.forEach((s, i) => addMarker(s, String(i + 1), `${s.categoryLabel || ""} · ${s.distance} 公尺`));
+  (state.nearby.activities || []).forEach((a) =>
+    addMarker(a, "活", `免費活動 · ${a.distance} 公尺`, "#2f5fd0"));
+  (state.nearby.cultureStores || []).forEach((c) =>
+    addMarker(c, "幣", `文化幣 · ${c.distance} 公尺`, "#7a4dff"));
+
+  const pointCount = stores.length
+    + (state.nearby.activities || []).length
+    + (state.nearby.cultureStores || []).length;
+  if (pointCount) map.fitBounds(bounds, 40);
 }
 
 async function loadNearby(coords, { rerender }) {
@@ -209,6 +286,8 @@ async function loadNearby(coords, { rerender }) {
       coords,
       source: data.source,
       stores: data.stores || [],
+      activities: data.activities || [],
+      cultureStores: data.cultureStores || [],
       budgetOnly: state.nearby.budgetOnly || false,
       error: null,
     };

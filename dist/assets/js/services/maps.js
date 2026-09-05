@@ -35,7 +35,6 @@ export async function loadGoogleMaps() {
     if (!window.google?.maps?.importLibrary) throw new Error("Google Maps 載入後找不到 google.maps");
     // loading=async 模式下，類別要透過 importLibrary 才會掛上來
     await window.google.maps.importLibrary("maps");
-    await window.google.maps.importLibrary("marker");
     return window.google.maps;
   })();
 
