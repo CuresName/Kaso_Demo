@@ -10,17 +10,33 @@ const SITE = "biggo.com.tw";
 const REGION = "tw";
 const TIMEOUT_MS = 15000;
 
+async function fetchBiggo(url) {
+  // BigGo 的非官方端點對突發流量會回 429，遇到就退避重試一次。
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        headers: { "Content-Type": "application/json", site: SITE, region: REGION },
+        signal: controller.signal,
+      });
+      if (res.status === 429 && attempt === 0) {
+        await new Promise((r) => setTimeout(r, 1800));
+        continue;
+      }
+      if (!res.ok) throw new Error(`biggo api ${res.status}`);
+      return await res.json();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw new Error("biggo api 429");
+}
+
 async function searchProducts(keyword, limit = 18) {
   const url = `${BASE_URL}/${encodeURIComponent(keyword)}/product`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
-      headers: { "Content-Type": "application/json", site: SITE, region: REGION },
-      signal: controller.signal,
-    });
-    if (!res.ok) throw new Error(`biggo api ${res.status}`);
-    const json = await res.json();
+    const json = await fetchBiggo(url);
     const items = (json.list || [])
       .filter((item) => item.price > 0)
       .map((item) => ({
@@ -45,9 +61,10 @@ async function searchProducts(keyword, limit = 18) {
       error: null,
     };
   } catch (err) {
-    return { items: [], lowPrice: 0, highPrice: 0, total: 0, source: "biggo", error: err.message };
-  } finally {
-    clearTimeout(timeout);
+    const msg = /429/.test(err.message)
+      ? "BigGo 目前限流，請稍後再按重試。"
+      : err.message;
+    return { items: [], lowPrice: 0, highPrice: 0, total: 0, source: "biggo", error: msg };
   }
 }
 
