@@ -154,7 +154,7 @@ function body() {
   const sourceLabel = source === "places"
     ? "Google Places"
     : source === "overpass"
-      ? "OpenStreetMap（Google 暫時無法使用）"
+      ? "© OpenStreetMap 貢獻者（Google 暫時無法使用）"
       : "示範資料（即時來源都連不上）";
 
   return `
