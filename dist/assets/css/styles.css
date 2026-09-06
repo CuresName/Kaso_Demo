@@ -148,7 +148,7 @@
       width: 100%; min-height: 44px; border: 1px solid #d9dee7; border-radius: 12px; background: #fff; padding: 10px 12px; color: var(--ink); outline: none;
     }
     .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--violet); box-shadow: 0 0 0 3px rgba(109,74,255,.11); }
-    .finance-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 16px; overflow: hidden; background: var(--line); border: 1px solid var(--line); border-radius: 16px; }
+    .finance-preview { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; margin-top: 16px; overflow: hidden; background: var(--line); border: 1px solid var(--line); border-radius: 16px; }
     .finance-preview > span { padding: 14px; display: grid; gap: 2px; background: #fff; }
     .finance-preview small { color: var(--muted); font-size: .72rem; }
     .finance-preview strong { font-size: 1.08rem; }

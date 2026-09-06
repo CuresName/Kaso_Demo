@@ -35,12 +35,6 @@ function monthsUntil(ym) {
   return (y - now.getFullYear()) * 12 + (m - (now.getMonth() + 1));
 }
 
-function formatYm(ym) {
-  if (!ym) return "—";
-  const [y, m] = ym.split("-");
-  return `${y} 年 ${Number(m)} 月`;
-}
-
 function daysInThisMonth() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -139,7 +133,6 @@ function render() {
               <div class="finance-preview" aria-live="polite">
                 <span><small>每月先存</small><strong id="previewSave">NT$2,000</strong></span>
                 <span><small>每日可安排</small><strong id="previewFlexible">填完後計算</strong></span>
-                <span><small>預計完成</small><strong id="previewDate">—</strong></span>
               </div>
               <p id="setupError" class="setup-error" role="alert" hidden></p>
               <div class="stage-actions budget-actions">
@@ -215,8 +208,7 @@ function mount({ navigate, showToast }) {
     const income = safeNumber("#monthlyIncome");
     const fixed = safeNumber("#fixedExpense");
     const target = safeNumber("#savingTarget");
-    const targetMonth = $("#savingTargetMonth")?.value || "";
-    const months = Math.max(1, monthsUntil(targetMonth));
+    const months = Math.max(1, monthsUntil($("#savingTargetMonth")?.value || ""));
     const monthlySave = Math.ceil(target / months);
     const dailyFlexible = Math.floor(
       Math.max(0, income - fixed - monthlySave) / daysInThisMonth(),
@@ -228,7 +220,6 @@ function mount({ navigate, showToast }) {
         ? money(dailyFlexible)
         : "填完後計算"
     );
-    $("#previewDate").textContent = targetMonth ? formatYm(targetMonth) : "—";
 
     const rangeIds = ["qTime", "qFood", "qComfort", "qFun"];
     const percentages = valuesToPercentages(
