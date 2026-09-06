@@ -1104,6 +1104,12 @@
     .budget-stage .field input { min-height: 58px; margin-top: 2px; font-size: 1rem; }
     .budget-stage .finance-preview { margin-top: 12px; }
     .setup-error { margin: 12px 0 0; border-left: 5px solid var(--danger); background: #fff0ed; padding: 10px 12px; color: #9b2017; font-size: .82rem; }
+    .budget-warn { margin-top: 12px; padding: 14px 16px; border-radius: 16px; background: #fdf3cf; border: 1px solid #e6d488; display: flex; align-items: center; justify-content: space-between; gap: 14px 20px; flex-wrap: wrap; }
+    .budget-warn > div:first-child { display: grid; gap: 3px; }
+    .budget-warn strong { font-size: .95rem; color: #6b5600; }
+    .budget-warn small { color: #7a6410; font-size: .76rem; }
+    .budget-warn-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .budget-warn-actions .secondary-btn { padding: 8px 14px; font-size: .82rem; min-height: 0; }
     .budget-actions { justify-content: flex-end; margin-top: 18px; }
 
     /* v26: keep the first dashboard screen quiet and move services into a floating sheet. */

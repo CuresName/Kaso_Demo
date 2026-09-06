@@ -134,6 +134,16 @@ function render() {
                 <span><small>每月先存</small><strong id="previewSave">NT$2,000</strong></span>
                 <span><small>每日可安排</small><strong id="previewFlexible">填完後計算</strong></span>
               </div>
+              <div id="budgetWarn" class="budget-warn" role="status" hidden>
+                <div>
+                  <strong>每日可安排低於 NT$1,000</strong>
+                  <small id="budgetWarnDetail"></small>
+                </div>
+                <div class="budget-warn-actions">
+                  <button id="extendMonth" class="secondary-btn" type="button">延長 1 個月</button>
+                  <button id="tweakTarget" class="secondary-btn" type="button">調整存錢目標</button>
+                </div>
+              </div>
               <p id="setupError" class="setup-error" role="alert" hidden></p>
               <div class="stage-actions budget-actions">
                 <button id="budgetBack" class="secondary-btn" type="button">返回結果</button>
@@ -214,12 +224,23 @@ function mount({ navigate, showToast }) {
       Math.max(0, income - fixed - monthlySave) / daysInThisMonth(),
     );
 
+    const financeReady = hasInput("#monthlyIncome")
+      && hasInput("#fixedExpense")
+      && hasInput("#savingTarget")
+      && Boolean($("#savingTargetMonth")?.value);
+
     $("#previewSave").textContent = money(monthlySave);
-    $("#previewFlexible").textContent = (
-      hasInput("#monthlyIncome") && hasInput("#fixedExpense")
-        ? money(dailyFlexible)
-        : "填完後計算"
-    );
+    $("#previewFlexible").textContent = financeReady ? money(dailyFlexible) : "填完後計算";
+
+    const warn = $("#budgetWarn");
+    if (warn) {
+      const low = financeReady && dailyFlexible < 1000;
+      warn.hidden = !low;
+      if (low) {
+        $("#budgetWarnDetail").textContent =
+          `目前每日可安排 ${money(dailyFlexible)}。你可以延長完成月份，或調低存錢目標後再確認。`;
+      }
+    }
 
     const rangeIds = ["qTime", "qFood", "qComfort", "qFun"];
     const percentages = valuesToPercentages(
@@ -384,6 +405,20 @@ function mount({ navigate, showToast }) {
     input.addEventListener("input", updatePreview, listenerOptions);
   });
   $("#savingTargetMonth")?.addEventListener("change", updatePreview, listenerOptions);
+
+  $("#extendMonth")?.addEventListener("click", () => {
+    const input = $("#savingTargetMonth");
+    const [y, m] = (input.value || ymOffset(1)).split("-").map(Number);
+    const next = new Date(y, m, 1); // m 是 1-based，new Date 的 month 0-based → 這裡等於下個月
+    input.value = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+    updatePreview();
+  }, listenerOptions);
+
+  $("#tweakTarget")?.addEventListener("click", () => {
+    const target = $("#savingTarget");
+    target.focus();
+    target.select();
+  }, listenerOptions);
   $("#continueToBudget").addEventListener(
     "click",
     () => showStage("budget"),
