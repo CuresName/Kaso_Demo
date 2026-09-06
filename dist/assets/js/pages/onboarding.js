@@ -14,11 +14,37 @@ import {
 import {
   $,
   $$,
-  futureMonth,
   icon,
   money,
   valuesToPercentages,
 } from "../utils.js";
+
+// YYYY-MM 相關小工具
+function ymOffset(monthsAhead) {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + monthsAhead);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthsUntil(ym) {
+  if (!ym) return 0;
+  const [y, m] = ym.split("-").map(Number);
+  if (!y || !m) return 0;
+  const now = new Date();
+  return (y - now.getFullYear()) * 12 + (m - (now.getMonth() + 1));
+}
+
+function formatYm(ym) {
+  if (!ym) return "—";
+  const [y, m] = ym.split("-");
+  return `${y} 年 ${Number(m)} 月`;
+}
+
+function daysInThisMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+}
 
 function questionMarkup(question, index) {
   return `
@@ -108,11 +134,11 @@ function render() {
                 <label class="field">每月固定收入<input id="monthlyIncome" type="number" min="1" step="1000" placeholder="例如：30000"></label>
                 <label class="field">每月固定支出<input id="fixedExpense" type="number" min="0" step="1000" placeholder="例如：24000"></label>
                 <label class="field">想存到多少<input id="savingTarget" type="number" min="1" step="1000" value="12000"></label>
-                <label class="field">希望幾個月完成<input id="savingMonths" type="number" min="1" max="36" value="6"></label>
+                <label class="field">希望哪個月完成<input id="savingTargetMonth" type="month"></label>
               </div>
               <div class="finance-preview" aria-live="polite">
                 <span><small>每月先存</small><strong id="previewSave">NT$2,000</strong></span>
-                <span><small>每月可安排</small><strong id="previewFlexible">填完後計算</strong></span>
+                <span><small>每日可安排</small><strong id="previewFlexible">填完後計算</strong></span>
                 <span><small>預計完成</small><strong id="previewDate">—</strong></span>
               </div>
               <p id="setupError" class="setup-error" role="alert" hidden></p>
@@ -189,18 +215,20 @@ function mount({ navigate, showToast }) {
     const income = safeNumber("#monthlyIncome");
     const fixed = safeNumber("#fixedExpense");
     const target = safeNumber("#savingTarget");
-    const months = Math.max(1, safeNumber("#savingMonths", 1));
+    const targetMonth = $("#savingTargetMonth")?.value || "";
+    const months = Math.max(1, monthsUntil(targetMonth));
     const monthlySave = Math.ceil(target / months);
+    const dailyFlexible = Math.floor(
+      Math.max(0, income - fixed - monthlySave) / daysInThisMonth(),
+    );
 
     $("#previewSave").textContent = money(monthlySave);
     $("#previewFlexible").textContent = (
       hasInput("#monthlyIncome") && hasInput("#fixedExpense")
-        ? money(Math.max(0, income - fixed - monthlySave))
+        ? money(dailyFlexible)
         : "填完後計算"
     );
-    $("#previewDate").textContent = hasInput("#savingMonths")
-      ? futureMonth(months)
-      : "—";
+    $("#previewDate").textContent = targetMonth ? formatYm(targetMonth) : "—";
 
     const rangeIds = ["qTime", "qFood", "qComfort", "qFun"];
     const percentages = valuesToPercentages(
@@ -279,7 +307,9 @@ function mount({ navigate, showToast }) {
       $("#monthlyIncome").value = "";
       $("#fixedExpense").value = "";
       $("#savingTarget").value = "12000";
-      $("#savingMonths").value = "6";
+      const monthInput = $("#savingTargetMonth");
+      monthInput.min = ymOffset(1);
+      monthInput.value = ymOffset(6);
     }
     applyPersona("moonlight");
     showQuestion(0);
@@ -293,9 +323,9 @@ function mount({ navigate, showToast }) {
       "#monthlyIncome",
       "#fixedExpense",
       "#savingTarget",
-      "#savingMonths",
     ];
     const missing = required.find((selector) => !hasInput(selector));
+    const targetMonth = $("#savingTargetMonth")?.value || "";
     let message = "";
     let field = missing ? $(missing) : null;
 
@@ -307,12 +337,12 @@ function mount({ navigate, showToast }) {
     } else if (safeNumber("#fixedExpense") >= safeNumber("#monthlyIncome")) {
       message = "固定支出需要低於固定收入，才能計算可安排金額。";
       field = $("#fixedExpense");
-    } else if (
-      safeNumber("#savingTarget") <= 0
-      || safeNumber("#savingMonths") <= 0
-    ) {
-      message = "請填入有效的存款目標與完成月數。";
+    } else if (safeNumber("#savingTarget") <= 0) {
+      message = "請填入有效的存款目標。";
       field = $("#savingTarget");
+    } else if (!targetMonth || monthsUntil(targetMonth) < 1) {
+      message = "請選擇一個未來的完成月份。";
+      field = $("#savingTargetMonth");
     }
 
     if (!message) return true;
@@ -340,7 +370,7 @@ function mount({ navigate, showToast }) {
       income: safeNumber("#monthlyIncome"),
       fixed: safeNumber("#fixedExpense"),
       target: safeNumber("#savingTarget"),
-      months: Math.max(1, safeNumber("#savingMonths", 1)),
+      months: Math.max(1, monthsUntil($("#savingTargetMonth")?.value)),
       quality: {
         time: Number($("#qTime").value),
         food: Number($("#qFood").value),
@@ -362,6 +392,7 @@ function mount({ navigate, showToast }) {
   $$("#onboarding input").forEach((input) => {
     input.addEventListener("input", updatePreview, listenerOptions);
   });
+  $("#savingTargetMonth")?.addEventListener("change", updatePreview, listenerOptions);
   $("#continueToBudget").addEventListener(
     "click",
     () => showStage("budget"),
