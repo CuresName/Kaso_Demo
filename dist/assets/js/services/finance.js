@@ -11,7 +11,10 @@ const DEFAULT_PROFILE = {
 
 export function getFinance() {
   const profile = state.profile || DEFAULT_PROFILE;
-  const monthlySave = Math.ceil(profile.target / Math.max(1, profile.months));
+  // 每月要存的 = (還差多少 ÷ 剩幾個月)，已有的餘額算進去，不是從 0 開始存
+  const monthlySave = Math.ceil(
+    Math.max(0, profile.target - profile.currentBalance) / Math.max(1, profile.months),
+  );
   const flexible = Math.max(0, profile.income - profile.fixed - monthlySave);
   const spent = state.transactions.reduce(
     (sum, transaction) => sum + Number(transaction.amount || 0),

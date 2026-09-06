@@ -215,16 +215,19 @@ function mount({ navigate, showToast }) {
   }
 
   function updatePreview() {
+    const balance = safeNumber("#currentBalance");
     const income = safeNumber("#monthlyIncome");
     const fixed = safeNumber("#fixedExpense");
     const target = safeNumber("#savingTarget");
     const months = Math.max(1, monthsUntil($("#savingTargetMonth")?.value || ""));
-    const monthlySave = Math.ceil(target / months);
-    const dailyFlexible = Math.floor(
-      Math.max(0, income - fixed - monthlySave) / daysInThisMonth(),
-    );
+    // 每月要存的 = 還差多少 ÷ 剩幾個月（扣掉已有的餘額），跟首頁 finance.js 同一套
+    const monthlySave = Math.ceil(Math.max(0, target - balance) / months);
+    const dailyFlexible = Math.max(0, Math.floor(
+      (income - fixed - monthlySave) / daysInThisMonth(),
+    ));
 
-    const financeReady = hasInput("#monthlyIncome")
+    const financeReady = hasInput("#currentBalance")
+      && hasInput("#monthlyIncome")
       && hasInput("#fixedExpense")
       && hasInput("#savingTarget")
       && Boolean($("#savingTargetMonth")?.value);
@@ -351,6 +354,9 @@ function mount({ navigate, showToast }) {
       field = $("#fixedExpense");
     } else if (safeNumber("#savingTarget") <= 0) {
       message = "請填入有效的存款目標。";
+      field = $("#savingTarget");
+    } else if (safeNumber("#savingTarget") <= safeNumber("#currentBalance")) {
+      message = "存款目標要大於目前餘額，才有東西要存。";
       field = $("#savingTarget");
     } else if (!targetMonth || monthsUntil(targetMonth) < 1) {
       message = "請選擇一個未來的完成月份。";
